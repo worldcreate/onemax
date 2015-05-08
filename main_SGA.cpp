@@ -11,6 +11,7 @@
 #define TRIAL 20
 #define CHILDNUM 2
 #define SEED 100
+#define CROSS 1	//0:ER,1:SGA
 
 typedef struct{
 	char bit[BIT_SIZE];
@@ -161,6 +162,8 @@ void sort(Individual** individuals, int left, int right){
 }
 
 void Crossover(Individual **individuals){
+
+#if CROSS==0
 	shuffle(individuals);
 
 	for (int i = 0; i<POPULATION; i += 2){
@@ -175,7 +178,45 @@ void Crossover(Individual **individuals){
 			deleteIndividual(&c[j]);
 		}
 	}
+#elif CROSS==1
+	Individual *children[POPULATION];
+	int sumFit=0;	//fitの合計値
+	for(int i=0;i<POPULATION;i++){
+		sumFit+=individuals[i]->fitness;
+	}
 
+	for(int i=0;i<POPULATION;i+=CHILDNUM){
+		Individual *c[CHILDNUM+2];
+		int r[2];
+		r[0]=getRnd(0,sumFit-1);
+		r[1]=getRnd(0,sumFit-1);
+		int f=0;
+		// 乱数により、親二体を選択
+		for(int j=0,k=0;j<POPULATION;){
+			if(f<= r[k] && r[k]<=f+individuals[j]->fitness){
+				c[k]=individuals[j];
+				j=0;
+				k++;
+				f=0;
+				if(k==2)
+					break;
+				continue;
+			}
+			f+=individuals[j]->fitness;
+			j++;
+		}
+
+		createChild(c);
+		
+		for(int j=2;j<CHILDNUM+2;j++){
+			children[i+j-2]=c[j];
+		}
+	}
+	deleteIndividual(individuals);
+	for(int i=0;i<POPULATION;i++){
+		individuals[i]=children[i];
+	}
+#endif
 }
 
 void getStatus(int gen,Individual** individuals, int *min, int *max, double *avg){
