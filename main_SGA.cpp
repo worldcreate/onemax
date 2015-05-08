@@ -82,7 +82,6 @@ void shuffle(Individual **individuals){
 }
 
 void Mutation(Individual *individual){
-	int c = 0;
 	for (int i = 0; i<BIT_SIZE; i++){
 		int r = getRnd(1, 100);
 		if (r>MUTATION)
@@ -90,7 +89,6 @@ void Mutation(Individual *individual){
 		individual->fitness -= individual->bit[i];
 		individual->bit[i] = !(individual->bit[i]);
 		individual->fitness += individual->bit[i];
-		c++;
 	}
 }
 
@@ -161,6 +159,27 @@ void sort(Individual** individuals, int left, int right){
 	free(temp);
 }
 
+void roulette(Individual **individuals,Individual **c,int sum){
+	int r=getRnd(0,sum-1);
+	int saving=0;
+	// 乱数により、親二体を選択
+	for(int i=0,k=0;i<POPULATION;){
+		saving+=individuals[i]->fitness;
+		if(saving >= r){
+			c[k]=individuals[i];
+			k++;
+			if(k==CHILDNUM){
+				break;
+			}
+			r=getRnd(0,sum-1);
+			i=0;
+			saving=0;
+			continue;
+		}
+		i++;
+	}
+}
+
 void Crossover(Individual **individuals){
 
 #if CROSS==0
@@ -184,28 +203,9 @@ void Crossover(Individual **individuals){
 	for(int i=0;i<POPULATION;i++){
 		sumFit+=individuals[i]->fitness;
 	}
-
-	for(int i=0;i<POPULATION;i+=CHILDNUM){
+	for(int i=0;i<POPULATION;i+=2){
 		Individual *c[CHILDNUM+2];
-		int r[2];
-		r[0]=getRnd(0,sumFit-1);
-		r[1]=getRnd(0,sumFit-1);
-		int f=0;
-		// 乱数により、親二体を選択
-		for(int j=0,k=0;j<POPULATION;){
-			if(f<= r[k] && r[k]<=f+individuals[j]->fitness){
-				c[k]=individuals[j];
-				j=0;
-				k++;
-				f=0;
-				if(k==2)
-					break;
-				continue;
-			}
-			f+=individuals[j]->fitness;
-			j++;
-		}
-
+		roulette(individuals,c,sumFit);	// 親二人の選択(ルーレット)
 		createChild(c);
 		
 		for(int j=2;j<CHILDNUM+2;j++){
