@@ -11,7 +11,6 @@
 #define TRIAL 20
 #define CHILDNUM 2
 #define SEED 100
-#define CROSSTYPE 1	//0:ER,1:SGA
 
 typedef struct{
 	char bit[BIT_SIZE];
@@ -20,11 +19,9 @@ typedef struct{
 
 FILE *fp;
 
-typedef struct{
-	double avg;
-	int max;
-	int min;
-}Score;
+double g_trial_avg[GENERATION];
+int g_trial_max[GENERATION];
+int g_trial_min[GENERATION];
 
 int getRnd(int min, int max){
 	return (int)(((double)rand() + 1.0) / ((double)RAND_MAX + 2.0)*(max - min + 1)) + min;
@@ -84,6 +81,7 @@ void shuffle(Individual **individuals){
 }
 
 void Mutation(Individual *individual){
+	int c = 0;
 	for (int i = 0; i<BIT_SIZE; i++){
 		int r = getRnd(1, 100);
 		if (r>MUTATION)
@@ -91,6 +89,7 @@ void Mutation(Individual *individual){
 		individual->fitness -= individual->bit[i];
 		individual->bit[i] = !(individual->bit[i]);
 		individual->fitness += individual->bit[i];
+		c++;
 	}
 }
 
@@ -161,30 +160,7 @@ void sort(Individual** individuals, int left, int right){
 	free(temp);
 }
 
-void roulette(Individual **individuals,Individual **c,int sum){
-	int r=getRnd(0,sum-1);
-	int saving=0;
-	// 乱数により、親二体を選択
-	for(int i=0,k=0;i<POPULATION;){
-		saving+=individuals[i]->fitness;
-		if(saving >= r){
-			c[k]=individuals[i];
-			k++;
-			if(k==CHILDNUM){
-				break;
-			}
-			r=getRnd(0,sum-1);
-			i=0;
-			saving=0;
-			continue;
-		}
-		i++;
-	}
-}
-
 void Crossover(Individual **individuals){
-
-#if CROSSTYPE==0
 	shuffle(individuals);
 
 	for (int i = 0; i<POPULATION; i += 2){
@@ -199,64 +175,56 @@ void Crossover(Individual **individuals){
 			deleteIndividual(&c[j]);
 		}
 	}
-#elif CROSSTYPE==1
-	Individual *children[POPULATION];
-	int sumFit=0;	//fitの合計値
-	for(int i=0;i<POPULATION;i++){
-		sumFit+=individuals[i]->fitness;
-	}
-	for(int i=0;i<POPULATION;i+=2){
-		Individual *c[CHILDNUM+2];
-		roulette(individuals,c,sumFit);	// 親二人の選択(ルーレット)
-		createChild(c);
-		
-		for(int j=0;j<CHILDNUM;j++){
-			children[i+j]=c[j+2];
-		}
-	}
-	deleteIndividual(individuals);
-	for(int i=0;i<POPULATION;i++){
-		individuals[i]=children[i];
-	}
-#endif
+
 }
 
-void getStatus(Individual** individuals,Score *now,Score *trial){
-	now->max=0;
-	now->avg=0;
-	now->min=INT_MAX;
+void getStatus(int gen,Individual** individuals, int *min, int *max, double *avg){
+	*min = INT_MAX;
+	*max = 0;
+	*avg = 0;
 	for (int i = 0; i<POPULATION; i++){
 		int fit = individuals[i]->fitness;
-		if (now->max<fit){
-			now->max = fit;
+		if (*max<fit){
+			*max = fit;
 		}
-		if (now->min>fit){
-			now->min = fit;
+		if (*min>fit){
+			*min = fit;
 		}
-		now->avg += fit;
+		*avg += fit;
 	}
-	now->avg /= POPULATION;
-	if(now->max>trial->max){
-		trial->max=now->max;
+	*avg /= POPULATION;
+	if(*max>g_trial_max[gen]){
+		g_trial_max[gen]=*max;
 	}
-	if(now->min<trial->min){
-		trial->min=now->min;
+	if(*min<g_trial_min[gen]){
+		g_trial_min[gen]=*min;
 	}
-	trial->avg+=now->avg;
+	g_trial_avg[gen]+=*avg;
 }
 
-void Execute(Individual **individuals,Score* trialScores){
+void Execute(Individual **individuals){
 
 	for (int i = 0; i<GENERATION; i++){
-		Score genScore;
+		int min, max;
+		double avg;
 		Crossover(individuals);
 		fprintf(fp, "gen=%d,", i);
-		getStatus(individuals,&genScore,&trialScores[i]);
-		fprintf(fp, "%d,%d,%lf\n", genScore.min, genScore.max, genScore.avg);
+		getStatus(i,individuals, &min, &max, &avg);
+		fprintf(fp, "%d,%d,%lf\n", min, max, avg);
 	}
+
 }
 
-void myOpen(){
+int main(void){
+	Individual* individuals[POPULATION];
+	clock_t start, end;
+
+	for(int i=0;i<GENERATION;i++){
+		g_trial_max[i]=0;
+		g_trial_min[i]=INT_MAX;
+		g_trial_avg[i]=0;
+	}
+
 	time_t timer;
 	struct tm *t_st;
 	time(&timer);
@@ -264,42 +232,23 @@ void myOpen(){
 	char name[256];
 	sprintf(name, "%d%d%d.csv", t_st->tm_hour, t_st->tm_min, t_st->tm_sec);
 	fp = fopen(name, "w");
-}
 
-void myClose(){
-	fclose(fp);
-}
-
-void setScore(Score *scores){
-	for(int i=0;i<GENERATION;i++){
-		scores[i].max=0;
-		scores[i].min=INT_MAX;
-		scores[i].avg=0;
-	}
-}
-
-int main(void){
-	Individual* individuals[POPULATION];
-	Score trialScores[GENERATION];
-	clock_t start, end;
-	
-	myOpen();
-	setScore(trialScores);
 	start = clock();
 
 	for (int t = 0; t<TRIAL; t++){
 		fprintf(fp, "trial=%d\n", t);
 		fprintf(fp, ",min,max,avg\n");
 		Initialize(individuals,t);
-		Execute(individuals,trialScores);
+		Execute(individuals);
 		finallize(individuals);
 	}
 	fprintf(fp,",trialmin,trialmax,trialavg\n");
 	for(int i=0;i<GENERATION;i++){
-		fprintf(fp,"gen=%d,%d,%d,%lf\n",i,trialScores[i].min,trialScores[i].max,trialScores[i].avg/TRIAL);
+		fprintf(fp,"gen=%d,%d,%d,%lf\n",i,g_trial_min[i],g_trial_max[i],g_trial_avg[i]/TRIAL);
 	}
 	end = clock();
 	fprintf(fp, "time:%d[ms]\n", end - start);
-	myClose();
+
+	fclose(fp);
 	return 0;
 }

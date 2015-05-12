@@ -1,11 +1,25 @@
-CC=gcc
-TARGET=main_SGA.cpp
+CC = g++
+CFLAGS = -O 
+LDFLAGS = 
+INCLUDES = 
+LIBS = 
+DEBUG =
+TARGET = main
+SRC=$(wildcard *.cpp) 
+OBJS = $(SRC:.cpp=.o)
+.SUFFIXES:	.cpp
+# 生成規則 
+all: $(TARGET)
 
-all:
-	$(CC) $(DEBUG) $(TARGET)
-rm:
-	rm *.csv -f
-	rm *.stackdump -f
-	rm a.exe -f
+debug: DEBUG=-g -DDEBUG
+
+debug: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) $(DEBUG) -o $@ $(OBJS) $(LIBS) 
 run:
-	./a
+	./$(TARGET)
+clean:
+	rm -f $(TARGET) $(OBJS) .nfs* *~ \#* core 
+.cpp.o:
+	$(CC) $(CFLAGS) $(DEBUG) $(INCLUDES) -c $< 
