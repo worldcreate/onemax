@@ -11,7 +11,7 @@
 #define TRIAL 20
 #define CHILDNUM 2
 #define SEED 100
-#define CROSSTYPE 1	//0:ER,1:SGA
+#define CROSSTYPE 0	//0:ER,1:SGA
 
 typedef struct{
 	char bit[BIT_SIZE];
