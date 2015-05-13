@@ -8,7 +8,7 @@
 #define GENERATION 100
 #define MUTATION 1
 #define BIT_SIZE 100
-#define TRIAL 50
+#define TRIAL 20
 #define CHILDNUM 2
 #define SEED 100
 #define CROSSTYPE 0	//0:ER,1:SGA
@@ -22,12 +22,26 @@ FILE *fp;
 
 typedef struct{
 	double avg;
-	int max;
-	int min;
+	double max;
+	double min;
 }Score;
 
 int getRnd(int min, int max){
-	return (int)(((double)rand() + 1.0) / ((double)RAND_MAX + 2.0)*(max - min + 1)) + min;
+	return min+(int)(rand()*(max-min+1.0)/(1.0+RAND_MAX));
+}
+
+void print(Individual *individual){
+	for (int i = 0; i<BIT_SIZE; i++){
+		printf("%d", individual->bit[i]);
+	}
+	printf(":%d", individual->fitness);
+	printf("\n");
+}
+
+void listPrint(Individual **individuals){
+	for (int i = 0; i<POPULATION; i++){
+		print(individuals[i]);
+	}
 }
 
 void setIndividual(Individual **individual){
@@ -84,10 +98,16 @@ void shuffle(Individual **individuals){
 }
 
 void Mutation(Individual *individual){
+	#ifdef DEBUG
+		printf("mutation\n");
+	#endif
 	for (int i = 0; i<BIT_SIZE; i++){
 		int r = getRnd(1, 100);
 		if (r>MUTATION)
 			continue;
+		#ifdef DEBUG
+			printf("ok\n");
+		#endif
 		individual->fitness -= individual->bit[i];
 		individual->bit[i] = !(individual->bit[i]);
 		individual->fitness += individual->bit[i];
@@ -111,22 +131,8 @@ void createChild(Individual **childs){
 		}
 		childs[i]->fitness = fit1;
 		childs[i + 1]->fitness = fit2;
-		Mutation(childs[i]);
-		Mutation(childs[i + 1]);
-	}
-}
-
-void print(Individual *individual){
-	for (int i = 0; i<BIT_SIZE; i++){
-		printf("%d", individual->bit[i]);
-	}
-	printf(":%d", individual->fitness);
-	printf("\n");
-}
-
-void listPrint(Individual **individuals){
-	for (int i = 0; i<POPULATION; i++){
-		print(individuals[i]);
+		//Mutation(childs[i]);
+		//Mutation(childs[i + 1]);
 	}
 }
 
@@ -191,10 +197,34 @@ void Crossover(Individual **individuals){
 		Individual *c[CHILDNUM + 2];
 		c[0] = individuals[i];
 		c[1] = individuals[i + 1];
+		
+		#ifdef DEBUG
+			printf("before\n");
+			for(int j=0;j<POPULATION;j++){
+				if(j==i || j==i+1){
+					printf("\033[44m");
+				}
+				print(individuals[j]);
+				printf("\033[49m");
+			}
+		#endif
+
 		createChild(c);
 		sort(c, 0, CHILDNUM + 2 - 1);
 		individuals[i] = c[0];
 		individuals[i + 1] = c[1];
+
+		#ifdef DEBUG
+			printf("after\n");
+			for(int j=0;j<POPULATION;j++){
+				if(j==i || j==i+1){
+					printf("\033[44m");
+				}
+				print(individuals[j]);
+				printf("\033[49m");
+			}
+		#endif
+
 		for (int j = 2; j<CHILDNUM + 2; j++){
 			deleteIndividual(&c[j]);
 		}
@@ -225,6 +255,7 @@ void getStatus(Individual** individuals,Score *now,Score *trial){
 	now->max=0;
 	now->avg=0;
 	now->min=INT_MAX;
+
 	for (int i = 0; i<POPULATION; i++){
 		int fit = individuals[i]->fitness;
 		if (now->max<fit){
@@ -236,23 +267,22 @@ void getStatus(Individual** individuals,Score *now,Score *trial){
 		now->avg += fit;
 	}
 	now->avg /= POPULATION;
-	if(now->max>trial->max){
-		trial->max=now->max;
-	}
-	if(now->min<trial->min){
-		trial->min=now->min;
-	}
+
+	trial->max+=now->max;
+	trial->min+=now->min;
 	trial->avg+=now->avg;
 }
 
 void Execute(Individual **individuals,Score* trialScores){
-
 	for (int i = 0; i<GENERATION; i++){
 		Score genScore;
 		Crossover(individuals);
 		fprintf(fp, "gen=%d,", i);
+		#ifdef DEBUG
+			printf("gen=%d\n");
+		#endif
 		getStatus(individuals,&genScore,&trialScores[i]);
-		fprintf(fp, "%d,%d,%lf\n", genScore.min, genScore.max, genScore.avg);
+		fprintf(fp, "%lf,%lf,%lf\n", genScore.min, genScore.max, genScore.avg);
 	}
 }
 
@@ -273,7 +303,7 @@ void myClose(){
 void setScore(Score *scores){
 	for(int i=0;i<GENERATION;i++){
 		scores[i].max=0;
-		scores[i].min=INT_MAX;
+		scores[i].min=0;
 		scores[i].avg=0;
 	}
 }
@@ -296,10 +326,11 @@ int main(void){
 	}
 	fprintf(fp,",trialmin,trialmax,trialavg\n");
 	for(int i=0;i<GENERATION;i++){
-		fprintf(fp,"gen=%d,%d,%d,%lf\n",i,trialScores[i].min,trialScores[i].max,trialScores[i].avg/TRIAL);
+		fprintf(fp,"gen=%d,%lf,%lf,%lf\n",i,trialScores[i].min/TRIAL,trialScores[i].max/TRIAL,trialScores[i].avg/TRIAL);
 	}
 	end = clock();
 	fprintf(fp, "time:%d[ms]\n", end - start);
 	myClose();
+	
 	return 0;
 }

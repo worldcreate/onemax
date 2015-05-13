@@ -20,6 +20,6 @@ $(TARGET): $(OBJS)
 run:
 	./$(TARGET)
 clean:
-	rm -f $(TARGET) $(OBJS) *.csv .nfs* *~ \#* core 
+	rm -f $(TARGET) $(OBJS) *.stackdump *.csv .nfs* *~ \#* core 
 .cpp.o:
 	$(CC) $(CFLAGS) $(DEBUG) $(INCLUDES) -c $< 
