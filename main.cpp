@@ -8,7 +8,7 @@
 #define GENERATION 100
 #define MUTATION 1
 #define BIT_SIZE 100
-#define TRIAL 20
+#define TRIAL 50
 #define CHILDNUM 2
 #define SEED 100
 #define CROSSTYPE 0	//0:ER,1:SGA
