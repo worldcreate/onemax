@@ -8,7 +8,7 @@
 #define GENERATION 100
 #define MUTATION 1
 #define BIT_SIZE 100
-#define TRIAL 20
+#define TRIAL 50
 #define CHILDNUM 2
 #define SEED 100
 #define CROSSTYPE 0	//0:ER,1:SGA
@@ -18,15 +18,21 @@ typedef struct{
 	int fitness;
 }Individual;
 
-FILE *fp;
-
 typedef struct{
 	double avg;
 	double max;
 	double min;
 }Score;
 
+FILE *fp;
+
 int getRnd(int min, int max){
+	// 一応min,maxの確認
+	if(min>max){
+		int t=min;
+		min=max;
+		max=t;
+	}
 	return min+(int)(rand()*(max-min+1.0)/(1.0+RAND_MAX));
 }
 
@@ -34,8 +40,7 @@ void print(Individual *individual){
 	for (int i = 0; i<BIT_SIZE; i++){
 		printf("%d", individual->bit[i]);
 	}
-	printf(":%d", individual->fitness);
-	printf("\n");
+	printf(":%d\n", individual->fitness);
 }
 
 void listPrint(Individual **individuals){
@@ -87,16 +92,17 @@ void swap(Individual** left, Individual** right){
 	*right = temp;
 }
 
+// Fisher-Yates shuffle
 void shuffle(Individual **individuals){
-	int trialnum = getRnd(0, POPULATION);
-	for (int i = 0; i<trialnum; i++){
-		int tar1, tar2;
-		tar1 = getRnd(0, POPULATION / 2 - 1);
-		tar2 = getRnd(POPULATION / 2, POPULATION - 1);
-		swap(&individuals[tar1], &individuals[tar2]);
+	int max=POPULATION-1;
+	for (int i = max; i>1; i--){
+		int tar;
+		tar = getRnd(0, i);
+		swap(&individuals[tar], &individuals[i]);
 	}
 }
 
+#ifndef DEBUG
 void Mutation(Individual *individual){
 	#ifdef DEBUG
 		printf("mutation\n");
@@ -113,8 +119,47 @@ void Mutation(Individual *individual){
 		individual->fitness += individual->bit[i];
 	}
 }
+#endif
+
+#ifdef DEBUG
+void Mutation(Individual *individual,int color){
+	#ifdef DEBUG
+		printf("mutation\n");
+	#endif
+	for (int i = 0; i<BIT_SIZE; i++){
+		int r = getRnd(1, 100);
+		
+		if (r>MUTATION){
+			printf("\033[%dm",color);
+			printf("%d",individual->bit[i]);
+			continue;
+		}
+		individual->fitness -= individual->bit[i];
+		individual->bit[i] = !(individual->bit[i]);
+		individual->fitness += individual->bit[i];
+		printf("\033[37m");
+		printf("%d",individual->bit[i]);
+	}
+	printf(":%d\033[39m\n",individual->fitness);
+}
+#endif
 
 void createChild(Individual **childs){
+	#ifdef DEBUG
+		for(int i=0;i<BIT_SIZE;i++){
+			printf("\033[32m");
+			printf("%d",childs[0]->bit[i]);
+		}
+		printf("\033[39m");
+		printf("\n");
+		for(int i=0;i<BIT_SIZE;i++){
+			printf("\033[35m");
+			printf("%d",childs[1]->bit[i]);
+		}
+		printf("\033[39m");
+		printf("\n");
+	#endif
+
 	for (int i = 2; i<CHILDNUM + 2; i += 2){
 		int point = getRnd(1, BIT_SIZE - 2);
 		int fit1 = 0;
@@ -129,10 +174,34 @@ void createChild(Individual **childs){
 			fit1 += childs[i]->bit[j] = childs[1]->bit[j];
 			fit2 += childs[i + 1]->bit[j] = childs[0]->bit[j];
 		}
+
 		childs[i]->fitness = fit1;
 		childs[i + 1]->fitness = fit2;
-		//Mutation(childs[i]);
-		//Mutation(childs[i + 1]);
+		#ifndef DEBUG
+		Mutation(childs[i]);
+		Mutation(childs[i + 1]);
+		#endif
+		#ifdef DEBUG
+			for(int j=0;j<BIT_SIZE;j++){
+				printf("\033[32m");
+				if(j>=point)
+					printf("\033[35m");
+				printf("%d",childs[i]->bit[j]);
+			}
+			printf(":%d",childs[i]->fitness);
+			printf("\033[39m\n");
+			Mutation(childs[i],32);
+			for(int j=0;j<BIT_SIZE;j++){
+				printf("\033[35m");
+				if(j>=point)
+					printf("\033[32m");
+				printf("%d",childs[i+1]->bit[j]);
+			}
+			printf(":%d",childs[i+1]->fitness);
+			printf("\033[39m\n");
+			Mutation(childs[i+1],35);
+		#endif
+		
 	}
 }
 
@@ -201,11 +270,14 @@ void Crossover(Individual **individuals){
 		#ifdef DEBUG
 			printf("before\n");
 			for(int j=0;j<POPULATION;j++){
-				if(j==i || j==i+1){
-					printf("\033[44m");
+				if(j==i){
+					printf("\033[32m");
+				}
+				if(j==i+1){
+					printf("\033[35m");
 				}
 				print(individuals[j]);
-				printf("\033[49m");
+				printf("\033[39m");
 			}
 		#endif
 
@@ -218,10 +290,10 @@ void Crossover(Individual **individuals){
 			printf("after\n");
 			for(int j=0;j<POPULATION;j++){
 				if(j==i || j==i+1){
-					printf("\033[44m");
+					printf("\033[32m");
 				}
 				print(individuals[j]);
-				printf("\033[49m");
+				printf("\033[39m");
 			}
 		#endif
 
@@ -279,7 +351,7 @@ void Execute(Individual **individuals,Score* trialScores){
 		Crossover(individuals);
 		fprintf(fp, "gen=%d,", i);
 		#ifdef DEBUG
-			printf("gen=%d\n");
+			printf("gen=%d\n",i);
 		#endif
 		getStatus(individuals,&genScore,&trialScores[i]);
 		fprintf(fp, "%lf,%lf,%lf\n", genScore.min, genScore.max, genScore.avg);
@@ -309,6 +381,15 @@ void setScore(Score *scores){
 }
 
 int main(void){
+	#ifdef DEBUG
+	Individual* individuals[POPULATION];
+	Initialize(individuals,0);
+	listPrint(individuals);
+	printf("###########################\n");
+	sort(individuals,0,POPULATION-1);
+	listPrint(individuals);
+	finallize(individuals);
+	#else
 	Individual* individuals[POPULATION];
 	Score trialScores[GENERATION];
 	clock_t start, end;
@@ -331,6 +412,6 @@ int main(void){
 	end = clock();
 	fprintf(fp, "time:%d[ms]\n", end - start);
 	myClose();
-	
+	#endif
 	return 0;
 }
