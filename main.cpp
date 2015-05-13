@@ -184,7 +184,7 @@ void roulette(Individual **individuals,Individual **c,int sum){
 
 void Crossover(Individual **individuals){
 
-#if CROSSTYPE==0
+#if CROSSTYPE==0	// ER
 	shuffle(individuals);
 
 	for (int i = 0; i<POPULATION; i += 2){
@@ -199,7 +199,7 @@ void Crossover(Individual **individuals){
 			deleteIndividual(&c[j]);
 		}
 	}
-#elif CROSSTYPE==1
+#elif CROSSTYPE==1	// SGA
 	Individual *children[POPULATION];
 	int sumFit=0;	//fitの合計値
 	for(int i=0;i<POPULATION;i++){
