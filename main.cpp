@@ -4,11 +4,11 @@
 #include <limits.h>
 #include <memory.h>
 
-#define POPULATION 50
-#define GENERATION 100
+#define POPULATION 10
+#define GENERATION 10
 #define MUTATION 1
-#define BIT_SIZE 100
-#define TRIAL 50
+#define BIT_SIZE 50
+#define TRIAL 1
 #define CHILDNUM 2
 #define SEED 0
 #define CROSSTYPE 1	//0:ER,1:SGA
@@ -168,15 +168,24 @@ void sort(Individual** individuals, int left, int right){
 }
 
 void roulette(Individual **individuals,Individual **c,int sum){
+	// 書き直す必要あり
 	int r=getRnd(0,sum-1);
 	int saving=0;
 	// 乱数により、親二体を選択
+	#ifdef DEBUG
+		for(int i=0;i<POPULATION;i++){
+			printf("%d,%d\n",i,individuals[i]->fitness);
+		}
+	#endif
 	for(int i=0,k=0;i<POPULATION;){
 		saving+=individuals[i]->fitness;
 		if(saving >= r){
 			c[k]=individuals[i];
+			#ifdef DEBUG
+				printf("%d\n",c[k]->fitness);
+			#endif
 			k++;
-			if(k==CHILDNUM){
+			if(k==2){
 				break;
 			}
 			r=getRnd(0,sum-1);
@@ -186,6 +195,9 @@ void roulette(Individual **individuals,Individual **c,int sum){
 		}
 		i++;
 	}
+	#ifdef DEBUG
+		printf("\n");
+	#endif
 }
 
 void Crossover(Individual **individuals){
