@@ -4,11 +4,11 @@
 #include <limits.h>
 #include <memory.h>
 
-#define POPULATION 10
-#define GENERATION 10
+#define POPULATION 50
+#define GENERATION 100
 #define MUTATION 1
-#define BIT_SIZE 50
-#define TRIAL 1
+#define BIT_SIZE 100
+#define TRIAL 50
 #define CHILDNUM 2
 #define SEED 0
 #define CROSSTYPE 1	//0:ER,1:SGA
