@@ -258,9 +258,9 @@ void getStatus(Individual** individuals,Score *now,Score *trial){
 	}
 	now->avg /= POPULATION;
 
-	trial->max+=now->max;
-	trial->min+=now->min;
-	trial->avg+=now->avg;
+	trial->max=now->max;
+	trial->min=now->min;
+	trial->avg=now->avg;
 }
 
 void Execute(Individual **individuals,Score* trialScores){
@@ -295,11 +295,25 @@ void setScore(Score *scores){
 	}
 }
 
+void printResult(Score hist[TRIAL][GENERATION]){
+	Score trialAve[GENERATION];
+	Score trialDisperse[GENERATION];
+	for(int g=0;g<GENERATION;g++){
+		for(int t=0;t<TRIAL;t++){
+			trialAve[g].max+=hist[t][g].max;
+			trialAve[g].min+=hist[t][g].min;
+			trialAve[g].avg+=hist[t][g].avg;
+		}
+		trialAve[g].max/=TRIAL;
+		trialAve[g].min/=TRIAL;
+		trialAve[g].avg/=TRIAL;
+	}
+}
 
 int main(void){
 	
 	Individual* individuals[POPULATION];
-	Score trialScores[GENERATION];
+	Score histScores[TRIAL][GENERATION];
 	clock_t start, end;
 	
 	myOpen();
@@ -310,13 +324,10 @@ int main(void){
 		fprintf(fp, "trial=%d\n", t);
 		fprintf(fp, ",min,max,avg\n");
 		Initialize(individuals,t);
-		Execute(individuals,trialScores);
+		Execute(individuals,histScores[t]);
 		finallize(individuals);
 	}
-	fprintf(fp,",trialmin,trialmax,trialavg\n");
-	for(int i=0;i<GENERATION;i++){
-		fprintf(fp,"gen=%d,%lf,%lf,%lf\n",i,trialScores[i].min/TRIAL,trialScores[i].max/TRIAL,trialScores[i].avg/TRIAL);
-	}
+	printResult(histScores);
 	end = clock();
 	fprintf(fp, "time:%d[ms]\n", end - start);
 	myClose();
