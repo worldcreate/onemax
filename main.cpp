@@ -3,6 +3,7 @@
 #include <time.h>
 #include <limits.h>
 #include <memory.h>
+#include <math.h>
 
 #define POPULATION 50
 #define GENERATION 100
@@ -11,7 +12,7 @@
 #define TRIAL 50
 #define CHILDNUM 2
 #define SEED 0
-#define CROSSTYPE 1	//0:ER,1:SGA
+#define CROSSTYPE 0	//0:ER,1:SGA
 
 typedef struct{
 	char bit[BIT_SIZE];
@@ -287,17 +288,10 @@ void myClose(){
 	fclose(fp);
 }
 
-void setScore(Score *scores){
-	for(int i=0;i<GENERATION;i++){
-		scores[i].max=0;
-		scores[i].min=0;
-		scores[i].avg=0;
-	}
-}
-
 void printResult(Score hist[TRIAL][GENERATION]){
-	Score trialAve[GENERATION];
-	Score trialDisperse[GENERATION];
+	Score trialAve[GENERATION]={};
+	Score trialDisperse[GENERATION]={};
+
 	for(int g=0;g<GENERATION;g++){
 		for(int t=0;t<TRIAL;t++){
 			trialAve[g].max+=hist[t][g].max;
@@ -308,6 +302,25 @@ void printResult(Score hist[TRIAL][GENERATION]){
 		trialAve[g].min/=TRIAL;
 		trialAve[g].avg/=TRIAL;
 	}
+	for(int g=0;g<GENERATION;g++){
+		for(int t=0;t<TRIAL;t++){
+			trialDisperse[g].max+=pow(hist[t][g].max-trialAve[g].max,2);
+			trialDisperse[g].min+=pow(hist[t][g].min-trialAve[g].min,2);
+			trialDisperse[g].avg+=pow(hist[t][g].avg-trialAve[g].avg,2);
+		}
+		trialDisperse[g].max=sqrt(trialDisperse[g].max/TRIAL);
+		trialDisperse[g].min=sqrt(trialDisperse[g].min/TRIAL);
+		trialDisperse[g].avg=sqrt(trialDisperse[g].avg/TRIAL);
+	}
+
+	fprintf(fp,",min,max,ave,,dismin,dismax,disave\n");
+	for(int g=0;g<GENERATION;g++){
+		fprintf(fp,"gen=%d,%lf,%lf,%lf,,%lf,%lf,%lf\n",
+			g,
+			trialAve[g].min,trialAve[g].max,trialAve[g].avg,
+			trialDisperse[g].min,trialDisperse[g].max,trialDisperse[g].avg
+		);
+	}
 }
 
 int main(void){
@@ -317,7 +330,6 @@ int main(void){
 	clock_t start, end;
 	
 	myOpen();
-	setScore(trialScores);
 	start = clock();
 
 	for (int t = 0; t<TRIAL; t++){
